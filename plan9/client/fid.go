@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"syscall"
 
 	"9fans.net/go/plan9"
 )
@@ -29,6 +30,25 @@ func (fid *Fid) Close() error {
 	_, err := fid.c.rpc(tx)
 	fid.c.putfid(fid)
 	return err
+}
+
+func (fid *Fid) OpenFd() uint32 {
+	if fid == nil
+		return -1
+	tx := &plan9.Fcall{
+		Type: Topenfd,
+		Fid: fid,
+		Mode: mode&~OCEXEC,
+	}
+	rx, err := fid.c.rpc(tx)
+	if err != nil {
+		return -1
+	}
+	fid.c.putfid(fid)
+	if mode&OCEXEC && rx.Unixfd >= 0 {
+		_, _, _ = syscall.Syscall(syscall.SYS_FCNTL, rx.Unixfd, syscall.F_SETFL, syscall.FD_CLOEXEC)
+	}
+	return rx.Unixfd
 }
 
 func (fid *Fid) Create(name string, mode uint8, perm plan9.Perm) error {
