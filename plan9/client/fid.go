@@ -6,9 +6,9 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"syscall"
+//	"syscall"
 
-	"9fans.net/go/plan9"
+	"github.com/phone/9go/plan9"
 )
 
 func getuser() string { return os.Getenv("USER") }
@@ -32,22 +32,23 @@ func (fid *Fid) Close() error {
 	return err
 }
 
-func (fid *Fid) OpenFd() uint32 {
-	if fid == nil
-		return -1
+func (fid *Fid) OpenFd(mode uint8) uint32 {
+	if fid == nil {
+		return ^uint32(0)
+	}
 	tx := &plan9.Fcall{
-		Type: Topenfd,
-		Fid: fid,
-		Mode: mode&~OCEXEC,
+		Type: plan9.Topenfd,
+		Fid: fid.fid,
+		Mode: mode,
 	}
 	rx, err := fid.c.rpc(tx)
 	if err != nil {
-		return -1
+		return ^uint32(0)
 	}
 	fid.c.putfid(fid)
-	if mode&OCEXEC && rx.Unixfd >= 0 {
-		_, _, _ = syscall.Syscall(syscall.SYS_FCNTL, rx.Unixfd, syscall.F_SETFL, syscall.FD_CLOEXEC)
-	}
+// 	if mode&syscall.OCEXEC && rx.Unixfd >= 0 {
+// 		_, _, _ = syscall.Syscall(syscall.SYS_FCNTL, rx.Unixfd, syscall.F_SETFL, syscall.FD_CLOEXEC)
+// 	}
 	return rx.Unixfd
 }
 
